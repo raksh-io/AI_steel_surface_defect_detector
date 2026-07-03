@@ -1,0 +1,431 @@
+# AI-Powered Steel Surface Defect Detection and Quality Inspection Platform
+
+## 1. Cover Page
+
+| | |
+|---|---|
+| **Project Title** | AI-Powered Steel Surface Defect Detection and Quality Inspection Platform |
+| **Document Type** | Product Requirements Document (PRD) |
+| **Prepared For** | Final-Year Engineering Project |
+| **Prepared By** | [Your Name] |
+| **Institution** | [Your Institution Name] |
+| **Version** | 1.0 |
+| **Date** | July 3, 2026 |
+| **Duration** | 45 Days |
+
+---
+
+## 2. Document Information
+
+| Field | Detail |
+|---|---|
+| Document Owner | [Student Name] |
+| Reviewers | [Guide/Mentor Name] |
+| Status | Draft → Approved for Development |
+| Change Log | v1.0 – Initial PRD created |
+| Related Documents | Dataset documentation (NEU-DET), Architecture Diagram, Test Plan |
+
+---
+
+## 3. Executive Summary
+
+This project delivers a web-based AI application that detects and classifies steel surface defects using a Convolutional Neural Network (CNN), specifically EfficientNet-B0, trained on the NEU Steel Surface Defect Database. The platform allows Quality Inspectors and Factory Operators to upload images or use a live webcam feed to detect six defect types in real time, view confidence scores and Grad-CAM explainability heatmaps, and track inspection history through a dashboard.
+
+The system is scoped as a **single-student, 45-day MVP build**. It is deliberately kept to a monolithic, modular architecture (React + FastAPI + PostgreSQL) — no microservices, no Kubernetes, no distributed inference. The realistic goal is a working, demonstrable, defensible product, not a production-grade industrial system.
+
+**Reality check:** the two highest-risk features are (1) achieving usable live-webcam inference speed in the browser/backend without GPU infrastructure, and (2) getting Grad-CAM to render correctly on a mobile-inverted-residual architecture like EfficientNet. Both are flagged as MVP-critical-but-fallback-ready in this document — if either slips, there are documented fallback plans rather than silent scope failure.
+
+---
+
+## 4. Product Vision
+
+To give small and mid-sized steel manufacturing lines an affordable, fast, and explainable way to catch surface defects — crazing, inclusion, patches, pitted surface, rolled-in scale, and scratches — without needing expensive industrial vision hardware, by using a browser-accessible AI inspection tool that any operator can use with a standard camera.
+
+---
+
+## 5. Background
+
+Steel manufacturers currently rely on manual visual inspection or expensive specialized industrial cameras with proprietary defect-detection software. Manual inspection is slow, inconsistent between inspectors, and fatigue-prone on long shifts. Specialized hardware solutions are cost-prohibitive for smaller manufacturers or student/lab-scale research setups.
+
+Public datasets like NEU-DET (Northeastern University Surface Defect Database) have made it possible to train reasonably accurate defect classifiers without needing to collect proprietary factory data — making this a viable final-year AI/CV project with a real-world grounded use case.
+
+---
+
+## 6. Problem Statement
+
+Quality inspectors and factory operators lack an accessible, low-cost tool to:
+- Quickly classify steel surface defects with consistent accuracy.
+- Understand *why* the AI flagged a defect (explainability), which affects trust and adoption.
+- Track defect trends over time to inform production decisions.
+- Perform inspection using commodity hardware (a webcam) instead of specialized industrial vision systems.
+
+---
+
+## 7. Proposed Solution
+
+A web application with:
+1. A trained CNN (EfficientNet-B0) classifying steel surface images into 6 defect classes (or "no defect" if extended).
+2. An **image upload** inspection mode for static analysis.
+3. A **live webcam** inspection mode for continuous frame-by-frame prediction.
+4. **Grad-CAM** overlays showing which region of the image drove the prediction.
+5. A **dashboard** summarizing inspection volume, defect distribution, and history.
+6. **JWT-based authentication** so inspection data is tied to individual accounts and roles.
+
+---
+
+## 8. Objectives
+
+| # | Objective | Measurable Target |
+|---|---|---|
+| 1 | Build an accurate defect classifier | ≥ 90% test accuracy on NEU-DET held-out set |
+| 2 | Deliver working image-upload inspection | End-to-end upload → prediction in < 3 seconds |
+| 3 | Deliver working live webcam inspection | Sustained ≥ 5 FPS inference on CPU or entry-level GPU |
+| 4 | Provide explainability | Grad-CAM overlay rendered for every prediction |
+| 5 | Provide usable history/dashboard | Persist and display all past inspections with filters |
+| 6 | Secure the platform | Auth required for all inspection and dashboard routes |
+| 7 | Ship within scope and time | MVP complete and demoable by Day 45 |
+
+---
+
+## 9. Scope
+
+### 9.1 In Scope (MVP)
+- Image upload defect detection with confidence score
+- Live webcam defect detection (frame-by-frame, not video-stream ML pipeline)
+- Grad-CAM visualization
+- Prediction history storage and retrieval
+- Dashboard with core metrics and charts
+- User registration/login/logout with JWT
+- Single-user-role-aware basic access (all roles see the same UI initially; role field stored for future use)
+
+### 9.2 Out of Scope (Explicitly, for 45-day MVP)
+- Multi-camera / multi-line factory integration
+- Real industrial sensor or PLC integration
+- Role-based permission enforcement (RBAC logic beyond storing a role field)
+- Mobile native app
+- Multi-tenant / multi-factory support
+- Kubernetes, microservices, message queues, distributed training
+- Automated retraining pipelines / MLOps monitoring
+- Defect severity scoring or cost-impact estimation
+- Email notifications / alerting system
+- Offline-first / PWA support
+
+> **Mentor note:** Anything not explicitly listed under "In Scope" is not part of your 45-day commitment. If your guide or evaluator asks for something from the "Out of Scope" list, that's a Phase 2 conversation, not a Day-30 scramble.
+
+---
+
+## 10. Target Users
+
+| User | Primary Need |
+|---|---|
+| Quality Inspector | Fast, accurate defect classification with visual proof (Grad-CAM) |
+| Factory Operator | Simple live inspection during production line operation |
+| Production Manager | Aggregate defect trends via dashboard for decision-making |
+| System Administrator | Manage users, monitor system health |
+
+---
+
+## 11. User Personas
+
+**Persona 1 — Ravi, Quality Inspector (32)**
+Works a manual QC line, checks steel sheets visually, wants a second opinion tool that's fast and doesn't require typing reports by hand. Not highly technical — needs a simple UI.
+
+**Persona 2 — Meena, Factory Operator (26)**
+Operates production equipment, occasionally checks output surfaces during a shift. Needs a "point camera and see result" experience with minimal clicks.
+
+**Persona 3 — Arjun, Production Manager (41)**
+Reviews weekly/monthly defect trends to make process adjustments. Cares about the dashboard and history, not the raw inspection flow.
+
+**Persona 4 — System Admin (any age, IT-literate)**
+Manages accounts and ensures the platform stays operational. Cares about auth and basic system reliability, not the AI internals.
+
+---
+
+## 12. User Stories
+
+| ID | As a... | I want to... | So that... |
+|---|---|---|---|
+| US-01 | Quality Inspector | upload an image of a steel surface | I can get an instant defect classification |
+| US-02 | Quality Inspector | see the confidence score | I know how reliable the prediction is |
+| US-03 | Quality Inspector | see a Grad-CAM heatmap | I can visually verify why the AI flagged the defect |
+| US-04 | Factory Operator | use my webcam for live detection | I can inspect surfaces without stopping to upload files |
+| US-05 | Factory Operator | have defect frames auto-saved | I don't have to manually screenshot |
+| US-06 | Production Manager | view a dashboard of defect trends | I can make informed production decisions |
+| US-07 | Production Manager | view prediction history | I can audit past inspections |
+| US-08 | Any User | register and log in securely | my inspection data is private and attributable to me |
+| US-09 | System Admin | ensure only authenticated users access the system | data integrity and security are maintained |
+
+---
+
+## 13. Functional Requirements
+
+| ID | Requirement | Priority |
+|---|---|---|
+| FR-01 | System shall allow user registration with email/password | Must |
+| FR-02 | System shall authenticate users via JWT and issue access tokens | Must |
+| FR-03 | System shall allow logout (token invalidation on client) | Must |
+| FR-04 | System shall accept image upload (jpg/png) for inspection | Must |
+| FR-05 | System shall classify the uploaded image into one of 6 defect classes | Must |
+| FR-06 | System shall return a confidence score with each prediction | Must |
+| FR-07 | System shall generate and display a Grad-CAM heatmap overlay | Must |
+| FR-08 | System shall store every prediction (image ref, class, confidence, timestamp, user) | Must |
+| FR-09 | System shall support live webcam capture and periodic frame inference | Must |
+| FR-10 | System shall auto-save frames where a defect is detected above a confidence threshold | Should |
+| FR-11 | System shall display a dashboard with total inspections, total defects, and class distribution chart | Must |
+| FR-12 | System shall display recent inspections list | Must |
+| FR-13 | System shall allow filtering/searching prediction history | Should |
+| FR-14 | System shall restrict all inspection/dashboard routes to authenticated users only | Must |
+| FR-15 | System shall gracefully handle unsupported file types/sizes with clear errors | Should |
+
+---
+
+## 14. Non-Functional Requirements
+
+| Category | Requirement |
+|---|---|
+| Performance | Image inference response < 3s on CPU; live mode ≥ 5 FPS on a modern laptop |
+| Usability | UI usable without training; max 3 clicks to get a prediction from image upload |
+| Reliability | System should not crash on invalid/corrupt image input |
+| Security | Passwords hashed (bcrypt); JWT with expiry; no plaintext secrets in repo |
+| Maintainability | Modular codebase — AI, backend, frontend cleanly separated |
+| Scalability | Not a requirement for MVP; architecture should not actively prevent future scaling |
+| Portability | Should run locally via Docker Compose without cloud dependency |
+| Accessibility | Basic responsive layout; not required to meet full WCAG compliance for MVP |
+
+---
+
+## 15. Product Features (Detailed)
+
+### 15.1 AI Module
+- CNN-based classifier (EfficientNet-B0, transfer-learned on ImageNet weights, fine-tuned on NEU-DET)
+- Output: defect class + confidence score
+- Grad-CAM computed on the final convolutional block, overlaid on the original image
+- Model served via a FastAPI inference endpoint (single model instance, loaded at startup)
+
+### 15.2 Image Inspection
+- Drag-and-drop or file-picker upload
+- Client-side validation (file type, size limit e.g. 5MB)
+- Server returns class, confidence, Grad-CAM image (base64 or stored URL)
+- Result and Grad-CAM displayed side-by-side with original image
+- Every result persisted to `inspections` table
+
+### 15.3 Live Inspection
+- Browser requests webcam access (`getUserMedia`)
+- Frame captured and sent to backend at a fixed interval (e.g. every 1–2 seconds — **not** every video frame, to stay within CPU inference budget)
+- Prediction displayed as an overlay/label in near-real-time
+- If confidence for a defect class exceeds a threshold (e.g. 70%), frame is automatically saved and logged as an inspection record
+
+### 15.4 Dashboard
+- Total inspections counter
+- Total defects detected counter
+- Defect-class distribution (bar or pie chart)
+- Recent inspections table (last N entries)
+- Basic date-range filter
+
+### 15.5 Authentication
+- Registration (email, password, name)
+- Login issuing JWT access token
+- Logout (client-side token discard; optional short-lived token strategy)
+- Protected routes via JWT middleware in FastAPI
+
+---
+
+## 16. User Journey
+
+1. User lands on login/register page → creates account or logs in.
+2. User is routed to the main dashboard (empty state on first login).
+3. User navigates to "Image Inspection" → uploads a steel image → sees prediction + Grad-CAM.
+4. User optionally switches to "Live Inspection" → grants webcam access → watches real-time predictions.
+5. User returns to dashboard → sees updated stats and history reflecting their inspections.
+6. User logs out.
+
+---
+
+## 17. User Flow
+
+```
+[Login/Register] 
+      |
+      v
+[Dashboard] --> [Image Inspection] --> [Upload Image] --> [View Result + Grad-CAM] --> [Saved to History]
+      |
+      v
+[Live Inspection] --> [Enable Webcam] --> [Continuous Prediction] --> [Auto-save Defect Frames] --> [Saved to History]
+      |
+      v
+[Dashboard Refresh: Stats + Charts + History]
+```
+
+---
+
+## 18. System Workflow
+
+```
+User (Browser)
+   |
+   |  (image or frame)
+   v
+React Frontend  --- JWT ---> FastAPI Backend
+                                  |
+                                  |--> Auth Service (JWT validate)
+                                  |--> Inference Service (PyTorch model + Grad-CAM)
+                                  |--> PostgreSQL (store prediction, user, history)
+                                  |
+                                  v
+                          Response (class, confidence, Grad-CAM image)
+                                  |
+                                  v
+                          React Frontend renders result
+```
+
+---
+
+## 19. Success Criteria
+
+| Criterion | Target |
+|---|---|
+| Model accuracy | ≥ 90% on NEU-DET test split |
+| Image inspection works end-to-end | Yes/No functional demo |
+| Live webcam inspection works end-to-end | Yes/No functional demo, ≥ 5 FPS |
+| Grad-CAM renders correctly | Visually validated on ≥ 20 sample predictions |
+| Dashboard reflects real data | Verified against DB records |
+| Auth prevents unauthorized access | Verified via manual penetration-style test (no token = 401) |
+| Full demo runs without crashing | 15-minute live demo completed without unhandled errors |
+
+---
+
+## 20. Assumptions
+
+- NEU-DET dataset is sufficient for acceptable accuracy without additional data collection.
+- Development and demo will run on a personal laptop/desktop with a webcam (no dedicated industrial hardware).
+- A single GPU (or CPU-only, with realistic FPS expectations) is available for training and inference.
+- The evaluator/guide is fine with a locally-run demo (Docker Compose) rather than a live cloud deployment, though optional deployment is a bonus.
+
+---
+
+## 21. Constraints
+
+- 45-day timeline, single developer.
+- No budget for GPU cloud rental beyond free tiers (Kaggle/Colab) unless the student has personal hardware.
+- Must avoid enterprise complexity: no Kubernetes, no microservices, no message queues.
+- Tech stack is fixed: React, Tailwind, FastAPI, PyTorch, OpenCV, EfficientNet-B0, PostgreSQL, JWT.
+
+---
+
+## 22. Risks and Mitigation
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| Live webcam inference too slow on CPU | High | High | Cap frame-send rate (1 frame/1-2s); downscale frames before inference; fall back to "near-live" polling instead of true real-time if needed |
+| Grad-CAM implementation issues with EfficientNet's architecture | Medium | Medium | Use a well-tested library (`pytorch-grad-cam`) instead of hand-rolling; target the last MBConv block explicitly |
+| Model accuracy below target due to small dataset | Medium | High | Use transfer learning + aggressive data augmentation; document a lower achieved accuracy honestly rather than overclaiming |
+| Scope creep (adding "nice to have" features) | High | High | Enforce MVP list strictly; anything new goes into Section 26 (Future Enhancements) |
+| Running out of time near submission | Medium | High | Follow the Day 45 milestone plan with checkpoints (Section 28); if a checkpoint slips by >2 days, cut scope immediately, don't "catch up later" |
+| Auth/security shortcuts causing vulnerabilities | Medium | Medium | Use established libraries (passlib/bcrypt, python-jose) rather than custom crypto |
+| Dataset class imbalance | Medium | Medium | Check class distribution early; apply weighted loss or augmentation if imbalanced |
+
+---
+
+## 23. High-Level Architecture Overview
+
+```
+┌─────────────────────┐        ┌───────────────────────┐        ┌─────────────────┐
+│   React + Tailwind   │ <----> │       FastAPI          │ <----> │   PostgreSQL     │
+│   (Frontend SPA)      │  REST  │  - Auth (JWT)          │        │  - users         │
+│                        │  /WS   │  - Inspection API      │        │  - inspections   │
+│  - Auth pages          │        │  - Dashboard API       │        │                  │
+│  - Upload/Live UI       │        │  - Inference wrapper   │        └─────────────────┘
+│  - Dashboard/Charts     │        └──────────┬─────────────┘
+└─────────────────────┘                     │
+                                            v
+                                   ┌───────────────────┐
+                                   │  PyTorch Model      │
+                                   │  EfficientNet-B0     │
+                                   │  + Grad-CAM module    │
+                                   └───────────────────┘
+```
+
+Single monolithic backend service, single database, single model file loaded in-process. No separate inference microservice for MVP — that's an unnecessary boundary for a solo 45-day build.
+
+---
+
+## 24. Major Modules
+
+| Module | Responsibility |
+|---|---|
+| Auth Module | Registration, login, JWT issuance/validation |
+| Inference Module | Model loading, preprocessing, prediction, Grad-CAM generation |
+| Inspection API | Image upload endpoint, live-frame endpoint, history CRUD |
+| Dashboard API | Aggregation queries (counts, distributions) |
+| Frontend – Auth Pages | Login/Register forms |
+| Frontend – Inspection Pages | Upload UI, Webcam UI, result display |
+| Frontend – Dashboard Page | Charts, stats, history table |
+| Database Layer | Users table, Inspections table, migrations |
+
+---
+
+## 25. MVP Definition
+
+The MVP is considered complete when a logged-in user can:
+1. Register and log in.
+2. Upload an image and receive a defect classification with confidence score and Grad-CAM overlay.
+3. Use the webcam for live detection with visible, reasonably responsive predictions.
+4. See their inspection automatically saved and reflected in a dashboard with basic stats and charts.
+5. Log out, and be unable to access inspection/dashboard routes without logging back in.
+
+Anything beyond this is a stretch goal, not an MVP blocker.
+
+---
+
+## 26. Future Enhancements (Explicitly Post-MVP)
+
+- Role-based access control (different views for Inspector vs Manager vs Admin)
+- PDF/Excel export of inspection reports
+- Email/SMS alerting on defect detection
+- Multi-camera support for factory floor deployment
+- Model retraining pipeline with new labeled data
+- Defect severity/cost estimation scoring
+- Deployment to Render/Railway with CI/CD
+- Mobile-responsive PWA or native app
+- Multi-tenant support for multiple factories
+
+---
+
+## 27. Acceptance Criteria
+
+| Feature | Acceptance Criteria |
+|---|---|
+| Auth | User can register, log in, receive valid JWT, and is blocked from protected routes without it |
+| Image Inspection | Upload → result returned in <3s → Grad-CAM visibly overlays the correct defect region → record persisted |
+| Live Inspection | Webcam feed active → prediction updates at defined interval → defect frames auto-saved to DB |
+| Dashboard | Stats match actual DB record counts; charts update after new inspections |
+| History | All past inspections listed, sorted by recency, filterable by date/class |
+| Model | Achieves ≥ 90% accuracy on held-out NEU-DET test set (documented in a model card/report) |
+
+---
+
+## 28. 45-Day Development Milestones (with Checkpoints)
+
+Each week ends in a **checkpoint** — a hard go/no-go review. If a checkpoint is missed, cut scope for the next phase immediately rather than trying to "catch up" — that's how projects blow their deadline.
+
+| Phase | Days | Deliverable | ✅ Checkpoint (End of Phase) |
+|---|---|---|---|
+| **Phase 1: Setup & Data** | 1–5 | Repo structure, environment setup, NEU-DET dataset acquired and explored, train/val/test split defined | **CP1:** Dataset loaded, class distribution documented, environment reproducible via `requirements.txt`/Docker |
+| **Phase 2: Model Training** | 6–15 | EfficientNet-B0 fine-tuned, augmentation pipeline, training/validation loop, initial accuracy benchmark | **CP2:** Model achieves ≥85% val accuracy; best checkpoint saved; training curves documented |
+| **Phase 3: Grad-CAM & Model Finalization** | 16–20 | Grad-CAM integrated and validated on sample predictions; final model exported (.pt/.onnx) | **CP3:** Grad-CAM visually correct on ≥10 test images; final model accuracy ≥90% documented |
+| **Phase 4: Backend – Auth & Core API** | 21–26 | FastAPI project, user model, JWT auth, PostgreSQL schema/migrations, image upload endpoint wired to model | **CP4:** Can register/login via API (Postman/curl) and get a real prediction back from an uploaded image, end-to-end |
+| **Phase 5: Backend – Live & Dashboard APIs** | 27–31 | Live-frame inference endpoint, inspection history endpoints, dashboard aggregation endpoints | **CP5:** All backend endpoints tested and documented (e.g. via FastAPI's auto-generated docs); response times measured |
+| **Phase 6: Frontend – Auth & Image Inspection UI** | 32–36 | React app scaffold, Tailwind setup, login/register pages, image upload + result UI wired to backend | **CP6:** A user can log in through the UI and get a real prediction with Grad-CAM displayed |
+| **Phase 7: Frontend – Live Inspection & Dashboard UI** | 37–40 | Webcam capture UI, live prediction display, dashboard charts and history table | **CP7:** Full user journey (Section 16) works start to finish in the browser |
+| **Phase 8: Integration Testing & Bug Fixing** | 41–43 | End-to-end testing, edge case handling (bad files, expired tokens, empty states), performance tuning | **CP8:** No known crash-causing bugs; all Acceptance Criteria (Section 27) pass manually |
+| **Phase 9: Documentation & Demo Prep** | 44–45 | Final report, README, model card, demo script/rehearsal | **CP9 (Final):** Project runs cleanly from a fresh clone/Docker Compose; demo rehearsed at least once end-to-end |
+
+**Non-negotiable checkpoint rule:** if you're not at ≥85% val accuracy by Day 15 (CP2), do not proceed to polishing Grad-CAM — stop and fix the model first. A broken model with a beautiful UI is a failed project; a strong model with a plain UI is a passing one.
+
+---
+
+## 29. Conclusion
+
+This PRD defines a realistic, scoped, and technically sound final-year project: an AI-powered steel defect detection platform with image and live-webcam inspection, explainability via Grad-CAM, and a functional dashboard — built by one student in 45 days using a simple, modular, non-enterprise architecture.
+
+The document is intended as the single source of truth. If a feature isn't in Sections 9.1, 13, or 15, it is not part of the MVP commitment — full stop. Discipline in following the Section 28 checkpoints, not raw feature ambition, is what will determine whether this project finishes on time.
