@@ -11,7 +11,7 @@ from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 
 
 def create_model(
-    num_classes: int = 6,
+    num_classes: int = 7,
     pretrained: bool = True,
     freeze_backbone: bool = True,
 ) -> nn.Module:
@@ -97,7 +97,7 @@ def get_target_layer(model: nn.Module):
 
 def load_trained_model(
     checkpoint_path: str,
-    num_classes: int = 6,
+    num_classes: int = 7,
     device: str = "cpu",
 ) -> nn.Module:
     """

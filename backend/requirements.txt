@@ -1,0 +1,24 @@
+# FastAPI core
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# Database
+sqlalchemy==2.0.35
+alembic==1.13.3
+psycopg2-binary>=2.9.10
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.9
+
+# Config
+python-dotenv==1.0.1
+pydantic-settings==2.5.2
+email-validator==2.2.0
+
+# NOTE: torch, torchvision, opencv, Pillow, numpy, pytorch-grad-cam
+# are already installed in the AI venv (ai/venv).
+# Run this backend using: ai\venv\Scripts\uvicorn app.main:app
+# Or install above packages INTO ai/venv:
+#   ai\venv\Scripts\pip install fastapi uvicorn[standard] sqlalchemy alembic psycopg2-binary python-jose[cryptography] passlib[bcrypt] python-multipart python-dotenv pydantic-settings

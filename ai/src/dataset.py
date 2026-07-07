@@ -254,7 +254,7 @@ def create_dataloaders(
     return train_loader, val_loader, test_loader, class_to_idx
 
 
-def get_class_weights(labels: List[int], num_classes: int = 6) -> np.ndarray:
+def get_class_weights(labels: List[int], num_classes: int = 7) -> np.ndarray:
     """
     Compute class weights inversely proportional to class frequency.
     Useful for handling class imbalance in the loss function.

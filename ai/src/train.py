@@ -172,14 +172,14 @@ def train(args):
 
     # Compute class weights for imbalanced data
     all_paths, all_labels, _ = load_dataset_paths(args.data_dir)
-    class_weights = get_class_weights(all_labels, num_classes=6)
+    class_weights = get_class_weights(all_labels, num_classes=7)
     class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
     print(f"  Class weights: {class_weights.round(3)}")
 
     # ─── Model ───
     print("\n─── Creating Model ───")
     model = create_model(
-        num_classes=6,
+        num_classes=7,
         pretrained=True,
         freeze_backbone=True,
     )

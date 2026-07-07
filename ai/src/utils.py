@@ -21,6 +21,7 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 CLASS_NAMES = [
     "Crazing",
     "Inclusion",
+    "No_Defect",
     "Patches",
     "Pitted_Surface",
     "Rolled-in_Scale",
