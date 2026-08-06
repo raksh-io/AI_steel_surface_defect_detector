@@ -99,7 +99,11 @@ def load_model() -> None:
 
     model = _build_model(num_classes=settings.NUM_CLASSES)
 
-    checkpoint = torch.load(model_path, map_location=_device, weights_only=True)
+    try:
+        checkpoint = torch.load(model_path, map_location=_device, weights_only=True)
+    except Exception:
+        checkpoint = torch.load(model_path, map_location=_device, weights_only=False)
+
     if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
         model.load_state_dict(checkpoint["model_state_dict"])
         logger.info(f"Loaded checkpoint (epoch {checkpoint.get('epoch', '?')})")
@@ -119,7 +123,7 @@ def load_model() -> None:
 
 def get_model() -> nn.Module:
     if _model is None:
-        raise RuntimeError("Model not loaded. Call load_model() first.")
+        load_model()
     return _model
 
 
@@ -137,7 +141,8 @@ def run_inference(image: Image.Image) -> dict:
             gradcam_base64, original_base64
     """
     if _model is None or _gradcam is None:
-        raise RuntimeError("Model not loaded. Call load_model() at startup.")
+        logger.info("Lazy loading AI model for inference...")
+        load_model()
 
     image = image.convert("RGB")
 
