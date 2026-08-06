@@ -13,7 +13,7 @@ WORKDIR /app
 # Install ALL Python dependencies (web stack + AI stack)
 # For Docker we install everything here; locally we reuse the AI venv.
 COPY requirements-docker.txt .
-RUN pip install --no-cache-dir -r requirements-docker.txt --extra-index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir -r requirements-docker.txt
 
 # Copy application code and model
 COPY app/ ./app/

@@ -17,12 +17,15 @@ python-multipart==0.0.9
 # Config
 python-dotenv==1.0.1
 pydantic-settings==2.5.2
+email-validator==2.2.0
 
-# AI / Model inference (CPU version for Docker — GPU optional)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.2+cpu
-torchvision==0.17.2+cpu
-opencv-python-headless==4.10.0.84
-Pillow==10.4.0
-numpy==1.26.4
-pytorch-grad-cam==1.5.4
+# Storage
+supabase>=2.0.0
+
+# AI / Model inference
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+grad-cam>=1.5.0

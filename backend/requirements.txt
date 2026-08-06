@@ -21,9 +21,9 @@ email-validator==2.2.0
 supabase>=2.0.0
 
 # AI / Model Inference
-torch==2.2.2
-torchvision==0.17.2
-opencv-python-headless==4.10.0.84
-Pillow==10.4.0
-numpy==1.26.4
-pytorch-grad-cam==1.5.4
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+grad-cam>=1.5.0
