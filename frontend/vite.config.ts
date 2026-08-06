@@ -11,6 +11,9 @@ export default defineConfig({
     },
     conditions: ['import', 'module', 'browser', 'default'],
   },
+  build: {
+    cssMinify: false,
+  },
   server: {
     port: 5173,
     host: true,
