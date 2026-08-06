@@ -18,8 +18,15 @@ def _make_engine():
     if not url or url.startswith("sqlite"):
         # SQLite: no pool settings, needs check_same_thread=False
         return create_engine(url or "sqlite:///./steel_defects.db", connect_args={"check_same_thread": False})
-    # PostgreSQL
-    return create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=10)
+    try:
+        eng = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=10)
+        with eng.connect() as conn:
+            pass
+        return eng
+    except Exception as err:
+        import logging
+        logging.getLogger(__name__).warning(f"PostgreSQL connection failed ({err}). Falling back to SQLite.")
+        return create_engine("sqlite:///./steel_defects.db", connect_args={"check_same_thread": False})
 
 engine = _make_engine()
 

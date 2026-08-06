@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     )
 
     # ─── Database ───
-    DATABASE_URL: str = "postgresql://steel_user:steel_pass_change_me@localhost:5432/steel_defects"
+    DATABASE_URL: str = "sqlite:///./steel_defects.db"
 
     # ─── JWT Auth ───
     JWT_SECRET: str = "change-me-to-a-long-random-secret"
