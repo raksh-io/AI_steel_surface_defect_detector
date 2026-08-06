@@ -15,8 +15,9 @@ WORKDIR /app
 COPY requirements-docker.txt .
 RUN pip install --no-cache-dir -r requirements-docker.txt
 
-# Copy application code
+# Copy application code and model
 COPY app/ ./app/
+COPY model/ ./model/
 
 # Create uploads directory
 RUN mkdir -p /app/uploads
