@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { Activity, AlertTriangle, CheckCircle2, Loader2, LayoutDashboard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export default function Dashboard() {
   const { data: stats, isLoading, isError } = useQuery({

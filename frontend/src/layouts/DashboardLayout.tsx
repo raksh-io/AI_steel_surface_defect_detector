@@ -33,7 +33,8 @@ export default function DashboardLayout() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/health');
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+        const res = await fetch(`${baseUrl}/health`);
         setBackendOnline(res.ok);
       } catch {
         setBackendOnline(false);
