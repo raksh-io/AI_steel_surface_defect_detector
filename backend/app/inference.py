@@ -101,7 +101,8 @@ def load_model() -> None:
 
     try:
         checkpoint = torch.load(model_path, map_location=_device, weights_only=True)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to load checkpoint with weights_only=True ({e}). Retrying with weights_only=False...")
         checkpoint = torch.load(model_path, map_location=_device, weights_only=False)
 
     if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
@@ -141,7 +142,7 @@ def run_inference(image: Image.Image) -> dict:
             gradcam_base64, original_base64
     """
     if _model is None or _gradcam is None:
-        logger.info("Lazy loading AI model for inference...")
+        logger.info("Model not loaded yet. Auto-loading model now...")
         load_model()
 
     image = image.convert("RGB")
