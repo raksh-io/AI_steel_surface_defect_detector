@@ -34,10 +34,18 @@ async def lifespan(app: FastAPI):
     Shutdown: nothing extra needed — model lives in-process.
     """
     logger.info("─── Startup: creating database tables ───")
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("─── Database tables created ───")
+    except Exception as e:
+        logger.error(f"Database error during startup: {e}")
 
     logger.info("─── Startup: loading AI model ───")
-    load_model()
+    try:
+        load_model()
+        logger.info("─── AI model loaded ───")
+    except Exception as e:
+        logger.error(f"Model load error during startup: {e}")
 
     logger.info("─── Backend ready ───")
     yield

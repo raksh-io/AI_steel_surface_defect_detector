@@ -13,9 +13,11 @@ from app.config import settings
 
 def _make_engine():
     url = settings.DATABASE_URL
-    if url.startswith("sqlite"):
+    if url and url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    if not url or url.startswith("sqlite"):
         # SQLite: no pool settings, needs check_same_thread=False
-        return create_engine(url, connect_args={"check_same_thread": False})
+        return create_engine(url or "sqlite:///./steel_defects.db", connect_args={"check_same_thread": False})
     # PostgreSQL
     return create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=10)
 
