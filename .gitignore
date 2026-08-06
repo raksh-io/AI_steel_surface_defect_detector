@@ -32,8 +32,11 @@ outputs/
 *.pth
 *.onnx
 
-# Backend uploads
+# Backend uploads & database
+backend/uploads/
 backend/app/uploads/
+*.db
+*.sqlite3
 
 # Node
 frontend/node_modules/

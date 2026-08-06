@@ -154,8 +154,7 @@ async def webcam_frame(
 ):
     """
     Accept a webcam frame (base64-encoded) from the browser.
-    Only persists the record if confidence >= DEFECT_CONFIDENCE_THRESHOLD.
-    Always returns the prediction result.
+    Persists every result (including No_Defect) and returns the prediction.
     """
     # ── Decode frame ──
     try:
@@ -180,23 +179,20 @@ async def webcam_frame(
             detail=f"Inference error: {exc}",
         )
 
-    # ── Conditionally persist (only high-confidence detections) ──
-    record_id = -1
-    if result["confidence"] >= settings.DEFECT_CONFIDENCE_THRESHOLD:
-        orig_filename = _save_image_bytes(raw, "wcam")
-        gradcam_bytes = base64.b64decode(result["gradcam_base64"])
-        gradcam_filename = _save_image_bytes(gradcam_bytes, "wcam_gcam")
-        record = _persist_inspection(
-            db, current_user.id, result, orig_filename, gradcam_filename, source="webcam"
-        )
-        record_id = record.id
+    # ── Persist every frame result (including No_Defect) ──
+    orig_filename = _save_image_bytes(raw, "wcam")
+    gradcam_bytes = base64.b64decode(result["gradcam_base64"])
+    gradcam_filename = _save_image_bytes(gradcam_bytes, "wcam_gcam")
+    record = _persist_inspection(
+        db, current_user.id, result, orig_filename, gradcam_filename, source="webcam"
+    )
 
     return PredictionResult(
-        inspection_id=record_id,
+        inspection_id=record.id,
         defect_class=result["class_name"],
         class_index=result["class_index"],
         confidence=result["confidence"],
-        is_defect=(result["class_name"] != "No_Defect" and result["confidence"] >= settings.DEFECT_CONFIDENCE_THRESHOLD),
+        is_defect=(result["class_name"] != "No_Defect"),
         gradcam_base64=result["gradcam_base64"],
         original_base64=result["original_base64"],
         source="webcam",

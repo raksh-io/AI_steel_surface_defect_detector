@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ─── Model ───
-    MODEL_PATH: str = "/app/model/best_model.pt"
+    MODEL_PATH: str = "d:/Personal_projects/AI_Steel_Surface_Defect_Detection/checkpoints/best_model.pt"
     NUM_CLASSES: int = 7
 
     # ─── File Upload ───

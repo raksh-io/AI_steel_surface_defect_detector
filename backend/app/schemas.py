@@ -45,6 +45,16 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=255)
+    email: Optional[EmailStr] = None
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=72)
+
+
 # ─────────────────────────────────────────
 # Inspection Schemas
 # ─────────────────────────────────────────

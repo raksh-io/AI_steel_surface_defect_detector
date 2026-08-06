@@ -139,19 +139,26 @@ def run_inference(image: Image.Image) -> dict:
     confidence   = float(confidence_t.item())
     class_name   = CLASS_NAMES[class_idx]
 
-    # ── Grad-CAM ──
-    targets      = [ClassifierOutputTarget(class_idx)]
-    grayscale_cam = _gradcam(input_tensor=input_tensor, targets=targets)[0]  # H×W
-
-    # Overlay on original image
+    threshold = settings.DEFECT_CONFIDENCE_THRESHOLD
     original_resized = image.resize((INPUT_SIZE, INPUT_SIZE))
-    original_np      = np.array(original_resized).astype(np.float32) / 255.0
-    overlay          = show_cam_on_image(
-        original_np,
-        grayscale_cam,
-        use_rgb=True,
-        colormap=cv2.COLORMAP_JET,
-    )
+
+    if confidence < threshold:
+        # Confidence is low, assume no defect is present
+        class_name = "No_Defect"
+        overlay = np.array(original_resized)
+    else:
+        # ── Grad-CAM ──
+        targets      = [ClassifierOutputTarget(class_idx)]
+        grayscale_cam = _gradcam(input_tensor=input_tensor, targets=targets)[0]  # H×W
+
+        # Overlay on original image
+        original_np      = np.array(original_resized).astype(np.float32) / 255.0
+        overlay          = show_cam_on_image(
+            original_np,
+            grayscale_cam,
+            use_rgb=True,
+            colormap=cv2.COLORMAP_JET,
+        )
 
     # ── Encode to base64 ──
     def _to_b64(arr_or_pil) -> str:

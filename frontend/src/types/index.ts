@@ -29,6 +29,16 @@ export interface RegisterPayload {
   password: string;
 }
 
+export interface UserUpdatePayload {
+  name?: string;
+  email?: string;
+}
+
+export interface ChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+}
+
 export interface InspectionRecord {
   id: number;
   user_id: number;

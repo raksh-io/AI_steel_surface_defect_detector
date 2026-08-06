@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { LoginPayload, RegisterPayload, TokenResponse, User } from '../types';
+import type { LoginPayload, RegisterPayload, TokenResponse, User, UserUpdatePayload, ChangePasswordPayload } from '../types';
 
 export const authService = {
   async login(payload: LoginPayload): Promise<TokenResponse> {
@@ -14,6 +14,16 @@ export const authService = {
 
   async getMe(): Promise<User> {
     const { data } = await apiClient.get<User>('/api/auth/me');
+    return data;
+  },
+
+  async updateProfile(payload: UserUpdatePayload): Promise<User> {
+    const { data } = await apiClient.put<User>('/api/auth/profile', payload);
+    return data;
+  },
+
+  async changePassword(payload: ChangePasswordPayload): Promise<{ message: string }> {
+    const { data } = await apiClient.post<{ message: string }>('/api/auth/change-password', payload);
     return data;
   },
 
@@ -41,3 +51,4 @@ export const authService = {
     localStorage.setItem('user', JSON.stringify(user));
   },
 };
+
