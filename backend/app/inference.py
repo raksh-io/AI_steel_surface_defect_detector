@@ -80,6 +80,21 @@ def load_model() -> None:
     logger.info(f"Inference device: {_device}")
 
     model_path = settings.MODEL_PATH
+    if not os.path.exists(model_path):
+        import os
+        candidates = [
+            "model/best_model.pt",
+            "/app/model/best_model.pt",
+            "./model/best_model.pt",
+            "../ai/checkpoints/best_model.pt",
+            "checkpoints/best_model.pt",
+        ]
+        for candidate in candidates:
+            if os.path.exists(candidate):
+                logger.info(f"Configured model path '{model_path}' not found. Using fallback: '{candidate}'")
+                model_path = candidate
+                break
+
     logger.info(f"Loading model from: {model_path}")
 
     model = _build_model(num_classes=settings.NUM_CLASSES)
