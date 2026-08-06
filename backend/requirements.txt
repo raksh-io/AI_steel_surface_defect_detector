@@ -17,6 +17,10 @@ python-dotenv==1.0.1
 pydantic-settings==2.5.2
 email-validator==2.2.0
 
+# Storage
+supabase>=2.0.0
+
+
 # NOTE: torch, torchvision, opencv, Pillow, numpy, pytorch-grad-cam
 # are already installed in the AI venv (ai/venv).
 # Run this backend using: ai\venv\Scripts\uvicorn app.main:app

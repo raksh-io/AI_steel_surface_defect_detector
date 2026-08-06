@@ -237,12 +237,17 @@ export default function History() {
                         <td className="px-6 py-3">
                           {record.original_image_path ? (
                             <img
-                              src={`${API_BASE_URL}/uploads/${record.original_image_path}`}
+                              src={
+                                record.original_image_path.startsWith('http')
+                                  ? record.original_image_path
+                                  : `${API_BASE_URL}/uploads/${record.original_image_path}`
+                              }
                               alt={record.defect_class}
                               className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-slate-100 shadow-sm"
                               loading="lazy"
                             />
                           ) : (
+
                             <div className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center">
                               <Activity className="w-4 h-4 text-slate-400" />
                             </div>

@@ -106,10 +106,11 @@ export default function Dashboard() {
                     contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {stats.class_distribution.map((entry, index) => (
+                    {stats.class_distribution.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                     ))}
                   </Bar>
+
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -147,12 +148,17 @@ export default function Dashboard() {
                       <td className="px-6 py-3">
                         {record.original_image_path ? (
                           <img 
-                            src={`${API_BASE_URL}/uploads/${record.original_image_path}`} 
+                            src={
+                              record.original_image_path.startsWith('http')
+                                ? record.original_image_path
+                                : `${API_BASE_URL}/uploads/${record.original_image_path}`
+                            } 
                             alt="Defect" 
                             className="w-10 h-10 rounded-md object-cover border border-slate-200 bg-slate-100"
                             loading="lazy"
                           />
                         ) : (
+
                           <div className="w-10 h-10 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center">
                             <Activity className="w-4 h-4 text-slate-400" />
                           </div>

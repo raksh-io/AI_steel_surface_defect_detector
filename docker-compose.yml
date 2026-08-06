@@ -34,6 +34,9 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       MODEL_PATH: ${MODEL_PATH:-/app/model/best_model.pt}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_KEY: ${SUPABASE_KEY:-}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-steel-defects}
     ports:
       - "8000:8000"
     volumes:

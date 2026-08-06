@@ -28,9 +28,12 @@ class Settings(BaseSettings):
     MODEL_PATH: str = "d:/Personal_projects/AI_Steel_Surface_Defect_Detection/checkpoints/best_model.pt"
     NUM_CLASSES: int = 7
 
-    # ─── File Upload ───
+    # ─── File Upload & Supabase Storage ───
     UPLOAD_DIR: str = "/app/uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+    SUPABASE_STORAGE_BUCKET: str = "steel-defects"
 
     # ─── CORS ───
     ALLOWED_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]

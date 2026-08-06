@@ -26,6 +26,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.inference import run_inference
 from app.schemas import InspectionListResponse, InspectionOut, PredictionResult
+from app.storage import upload_image_data
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/inspect", tags=["inspections"])
@@ -37,21 +38,16 @@ MAX_BYTES = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 # ─── helpers ───────────────────────────────────────────────────────────────
 
 def _save_image_bytes(data: bytes, prefix: str) -> str:
-    """Save raw image bytes to UPLOAD_DIR and return the relative path."""
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    filename = f"{prefix}_{uuid.uuid4().hex[:12]}.png"
-    filepath = os.path.join(settings.UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(data)
-    return filename   # relative path stored in DB
+    """Upload image bytes to Supabase Storage or local fallback."""
+    return upload_image_data(data, prefix)
 
 
 def _save_pil(image: Image.Image, prefix: str) -> str:
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    filename = f"{prefix}_{uuid.uuid4().hex[:12]}.png"
-    filepath = os.path.join(settings.UPLOAD_DIR, filename)
-    image.save(filepath, format="PNG")
-    return filename
+    """Upload PIL image to Supabase Storage or local fallback."""
+    buf = BytesIO()
+    image.save(buf, format="PNG")
+    return upload_image_data(buf.getvalue(), prefix)
+
 
 
 def _persist_inspection(
