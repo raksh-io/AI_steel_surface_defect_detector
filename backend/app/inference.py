@@ -9,6 +9,7 @@ imports, no sys.path hacks. All AI utilities are re-implemented inline
 so the backend is self-contained.
 """
 
+import os
 import base64
 import logging
 from io import BytesIO
@@ -81,7 +82,6 @@ def load_model() -> None:
 
     model_path = settings.MODEL_PATH
     if not os.path.exists(model_path):
-        import os
         candidates = [
             "model/best_model.pt",
             "/app/model/best_model.pt",
