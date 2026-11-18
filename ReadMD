@@ -429,3 +429,35 @@ Each week ends in a **checkpoint** — a hard go/no-go review. If a checkpoint i
 This PRD defines a realistic, scoped, and technically sound final-year project: an AI-powered steel defect detection platform with image and live-webcam inspection, explainability via Grad-CAM, and a functional dashboard — built by one student in 45 days using a simple, modular, non-enterprise architecture.
 
 The document is intended as the single source of truth. If a feature isn't in Sections 9.1, 13, or 15, it is not part of the MVP commitment — full stop. Discipline in following the Section 28 checkpoints, not raw feature ambition, is what will determine whether this project finishes on time.
+
+---
+
+## 30. Quickstart & Verification Guide
+
+### 30.1 Automated Testing
+Run the backend pytest test suite (in-memory SQLite, isolated mock fixtures):
+```bash
+ai/venv/Scripts/python.exe -m pytest backend/tests -v
+```
+
+### 30.2 Frontend Compilation & Build
+Verify TypeScript type checks and production bundle packaging:
+```bash
+npm --prefix frontend run build
+```
+
+### 30.3 Running the Services Locally
+1. **Backend Server**:
+   ```bash
+   cd backend
+   uvicorn app.main:app --reload --port 8000
+   ```
+   Interactive Swagger docs available at `http://127.0.0.1:8000/docs`.
+
+2. **Frontend SPA**:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   Vite development server starts at `http://localhost:5173`.
+
