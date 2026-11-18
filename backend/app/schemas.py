@@ -115,3 +115,33 @@ class DashboardStats(BaseModel):
     defect_rate: float                              # 0-1
     class_distribution: List[ClassDistributionItem]
     recent_inspections: List[InspectionOut]
+
+
+class ConfidenceBucket(BaseModel):
+    range: str
+    min: float
+    max: float
+    count: int
+
+
+class SourceBreakdownItem(BaseModel):
+    name: str
+    value: int
+
+
+class TimelineItem(BaseModel):
+    date: str
+    total: int
+    defects: int
+
+
+class DashboardAnalytics(BaseModel):
+    total_inspections: int
+    total_defects: int
+    defect_rate: float
+    avg_confidence: float
+    top_defect_class: Optional[str]
+    confidence_histogram: List[ConfidenceBucket]
+    source_breakdown: List[SourceBreakdownItem]
+    timeline: List[TimelineItem]
+    class_distribution: List[ClassDistributionItem]
