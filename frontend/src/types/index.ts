@@ -81,3 +81,33 @@ export interface DashboardStats {
   class_distribution: ClassDistributionItem[];
   recent_inspections: InspectionRecord[];
 }
+
+export interface ConfidenceBucket {
+  range: string;
+  min: number;
+  max: number;
+  count: number;
+}
+
+export interface SourceBreakdownItem {
+  name: string;
+  value: number;
+}
+
+export interface TimelineItem {
+  date: string;
+  total: number;
+  defects: number;
+}
+
+export interface DashboardAnalytics {
+  total_inspections: number;
+  total_defects: number;
+  defect_rate: number;
+  avg_confidence: number;
+  top_defect_class: string | null;
+  confidence_histogram: ConfidenceBucket[];
+  source_breakdown: SourceBreakdownItem[];
+  timeline: TimelineItem[];
+  class_distribution: ClassDistributionItem[];
+}

@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboard';
-import { inspectionService } from '../services/inspection';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, AreaChart, Area, CartesianGrid, Legend,
@@ -16,56 +15,14 @@ import {
   Layers,
   FileImage,
   Video,
+  Calendar,
+  Sparkles,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { InspectionRecord } from '../types';
 
 // Color palette
 const CHART_COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626'];
 const SOURCE_COLORS = ['#3b82f6', '#8b5cf6'];
-
-// Build confidence histogram buckets from raw records
-function buildConfidenceHistogram(records: InspectionRecord[]) {
-  const buckets = [
-    { range: '0-20%', min: 0, max: 0.2, count: 0 },
-    { range: '20-40%', min: 0.2, max: 0.4, count: 0 },
-    { range: '40-60%', min: 0.4, max: 0.6, count: 0 },
-    { range: '60-80%', min: 0.6, max: 0.8, count: 0 },
-    { range: '80-100%', min: 0.8, max: 1.01, count: 0 },
-  ];
-  records.forEach((r) => {
-    const bucket = buckets.find((b) => r.confidence >= b.min && r.confidence < b.max);
-    if (bucket) bucket.count += 1;
-  });
-  return buckets;
-}
-
-// Build source breakdown (upload vs webcam)
-function buildSourceBreakdown(records: InspectionRecord[]) {
-  const counts: Record<string, number> = {};
-  records.forEach((r) => {
-    counts[r.source] = (counts[r.source] || 0) + 1;
-  });
-  return Object.entries(counts).map(([name, value]) => ({ name, value }));
-}
-
-// Build timeline data (inspections per day)
-function buildTimeline(records: InspectionRecord[]) {
-  const byDate: Record<string, { total: number; defects: number }> = {};
-  records.forEach((r) => {
-    const day = new Date(r.created_at).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-    });
-    if (!byDate[day]) byDate[day] = { total: 0, defects: 0 };
-    byDate[day].total += 1;
-    if (r.is_defect) byDate[day].defects += 1;
-  });
-  // Return in chronological order (reverse since records come newest-first)
-  return Object.entries(byDate)
-    .map(([date, vals]) => ({ date, ...vals }))
-    .reverse();
-}
 
 // Custom tooltip for recharts
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -85,40 +42,24 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Analytics() {
-  // Fetch dashboard stats (totals + class distribution)
-  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: () => dashboardService.getStats(),
+  const [timeframe, setTimeframe] = useState<number | undefined>(30);
+
+  // Fetch aggregated analytics directly from server
+  const { data: analytics, isLoading, isError } = useQuery({
+    queryKey: ['dashboard-analytics', timeframe],
+    queryFn: () => dashboardService.getAnalytics(timeframe),
   });
-
-  // Fetch all inspection records for detailed analysis (up to 500)
-  const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['analytics-all-records'],
-    queryFn: () => inspectionService.getHistory(0, 500),
-  });
-
-  const isLoading = statsLoading || historyLoading;
-  const allRecords = historyData?.items || [];
-
-  // Derived chart data
-  const confidenceHistogram = buildConfidenceHistogram(allRecords);
-  const sourceBreakdown = buildSourceBreakdown(allRecords);
-  const timeline = buildTimeline(allRecords);
-  const avgConfidence =
-    allRecords.length > 0
-      ? allRecords.reduce((sum, r) => sum + r.confidence, 0) / allRecords.length
-      : 0;
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-industrial-500 mb-4" />
-        <p className="text-slate-500 font-medium">Loading analytics data...</p>
+        <p className="text-slate-500 font-medium">Aggregating inspection analytics...</p>
       </div>
     );
   }
 
-  if (statsError || !stats) {
+  if (isError || !analytics) {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md flex items-start gap-3">
@@ -132,19 +73,43 @@ export default function Analytics() {
     );
   }
 
-  const hasData = stats.total_inspections > 0;
+  const hasData = analytics.total_inspections > 0;
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-industrial-500" />
-          Defect Analytics
-        </h1>
-        <p className="text-slate-500 mt-1">
-          Historical trends, distribution patterns, and AI model performance analytics.
-        </p>
+      {/* Header and Timeframe Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-industrial-500" />
+            Defect Analytics
+          </h1>
+          <p className="text-slate-500 mt-1">
+            Historical trends, defect patterns, and AI model performance analytics.
+          </p>
+        </div>
+
+        {/* Timeframe selector pills */}
+        <div className="flex items-center gap-1.5 bg-white border border-slate-200 p-1 rounded-xl shadow-sm self-start sm:self-auto">
+          {[
+            { label: '7 Days', value: 7 },
+            { label: '14 Days', value: 14 },
+            { label: '30 Days', value: 30 },
+            { label: 'All Time', value: undefined },
+          ].map((t) => (
+            <button
+              key={t.label}
+              onClick={() => setTimeframe(t.value)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                timeframe === t.value
+                  ? 'bg-industrial-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -157,8 +122,10 @@ export default function Analytics() {
             </div>
             <span className="text-sm">Total Inspections</span>
           </div>
-          <div className="text-3xl font-black text-slate-900">{stats.total_inspections}</div>
-          <div className="text-xs text-slate-400 mt-1">All recorded items</div>
+          <div className="text-3xl font-black text-slate-900">{analytics.total_inspections}</div>
+          <div className="text-xs text-slate-400 mt-1">
+            {timeframe ? `Past ${timeframe} days` : 'All recorded items'}
+          </div>
         </div>
 
         {/* Total Defects */}
@@ -169,8 +136,8 @@ export default function Analytics() {
             </div>
             <span className="text-sm">Total Defects</span>
           </div>
-          <div className="text-3xl font-black text-slate-900">{stats.total_defects}</div>
-          <div className="text-xs text-slate-400 mt-1">Items flagged as defective</div>
+          <div className="text-3xl font-black text-slate-900">{analytics.total_defects}</div>
+          <div className="text-xs text-slate-400 mt-1">Items flagged with defects</div>
         </div>
 
         {/* Defect Rate */}
@@ -182,9 +149,17 @@ export default function Analytics() {
             <span className="text-sm">Defect Rate</span>
           </div>
           <div className="text-3xl font-black text-slate-900">
-            {(stats.defect_rate * 100).toFixed(1)}%
+            {(analytics.defect_rate * 100).toFixed(1)}%
           </div>
-          <div className="text-xs text-slate-400 mt-1">Defects per total inspections</div>
+          <div className="text-xs text-slate-400 mt-1">
+            {analytics.top_defect_class ? (
+              <span className="text-industrial-600 font-semibold">
+                Top: {analytics.top_defect_class.replace('_', ' ')}
+              </span>
+            ) : (
+              'Defects per total'
+            )}
+          </div>
         </div>
 
         {/* Average Confidence */}
@@ -196,9 +171,9 @@ export default function Analytics() {
             <span className="text-sm">Avg Confidence</span>
           </div>
           <div className="text-3xl font-black text-slate-900">
-            {(avgConfidence * 100).toFixed(1)}%
+            {(analytics.avg_confidence * 100).toFixed(1)}%
           </div>
-          <div className="text-xs text-slate-400 mt-1">Mean prediction confidence</div>
+          <div className="text-xs text-slate-400 mt-1">Mean model confidence</div>
         </div>
       </div>
 
@@ -208,7 +183,7 @@ export default function Analytics() {
           <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
             <BarChart3 className="w-8 h-8 text-slate-400" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-2">No analytics data yet</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-2">No analytics data for this period</h3>
           <p className="text-sm text-slate-500 max-w-sm">
             Start inspecting steel surfaces to see analytics.{' '}
             <Link to="/inspect/image" className="text-industrial-600 hover:underline font-medium">
@@ -231,11 +206,11 @@ export default function Analytics() {
                 <Layers className="w-5 h-5 text-industrial-500" />
                 <h3 className="text-lg font-bold text-slate-900">Defect Class Distribution</h3>
               </div>
-              {stats.class_distribution.length > 0 ? (
+              {analytics.class_distribution.length > 0 ? (
                 <div className="h-[320px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={stats.class_distribution}
+                      data={analytics.class_distribution}
                       margin={{ top: 10, right: 10, left: -15, bottom: 40 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -248,7 +223,7 @@ export default function Analytics() {
                       <YAxis tick={{ fill: '#64748b', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Count">
-                        {stats.class_distribution.map((_entry, index) => (
+                        {analytics.class_distribution.map((_entry, index) => (
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
                       </Bar>
@@ -271,7 +246,7 @@ export default function Analytics() {
               <div className="h-[320px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={confidenceHistogram}
+                    data={analytics.confidence_histogram}
                     margin={{ top: 10, right: 10, left: -15, bottom: 10 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -279,7 +254,7 @@ export default function Analytics() {
                     <YAxis tick={{ fill: '#64748b', fontSize: 11 }} allowDecimals={false} />
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Inspections" fill="#7c3aed">
-                      {confidenceHistogram.map((_entry, index) => {
+                      {analytics.confidence_histogram.map((_entry, index) => {
                         const gradient = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'];
                         return <Cell key={`conf-${index}`} fill={gradient[index]} />;
                       })}
@@ -298,12 +273,12 @@ export default function Analytics() {
                 <Layers className="w-5 h-5 text-industrial-500" />
                 <h3 className="text-lg font-bold text-slate-900">Inspection Source Breakdown</h3>
               </div>
-              {sourceBreakdown.length > 0 ? (
+              {analytics.source_breakdown.length > 0 ? (
                 <div className="h-[320px] w-full flex items-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={sourceBreakdown}
+                        data={analytics.source_breakdown}
                         cx="50%"
                         cy="50%"
                         innerRadius={70}
@@ -316,7 +291,7 @@ export default function Analytics() {
                         }
                         labelLine={{ stroke: '#94a3b8' }}
                       >
-                        {sourceBreakdown.map((_entry, index) => (
+                        {analytics.source_breakdown.map((_entry, index) => (
                           <Cell key={`pie-${index}`} fill={SOURCE_COLORS[index % SOURCE_COLORS.length]} />
                         ))}
                       </Pie>
@@ -339,7 +314,7 @@ export default function Analytics() {
 
               {/* Source legend cards */}
               <div className="grid grid-cols-2 gap-3 mt-4">
-                {sourceBreakdown.map((s) => (
+                {analytics.source_breakdown.map((s) => (
                   <div
                     key={s.name}
                     className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100"
@@ -352,72 +327,66 @@ export default function Analytics() {
                       )}
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 capitalize">{s.name}</p>
-                      <p className="text-lg font-black text-slate-900">{s.value}</p>
+                      <p className="text-xs text-slate-400 capitalize">{s.name}</p>
+                      <p className="text-sm font-bold text-slate-800">{s.value} inspections</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Chart 4: Timeline */}
+            {/* Chart 4: Daily Defect Timeline */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-center gap-2 mb-6">
-                <TrendingUp className="w-5 h-5 text-industrial-500" />
-                <h3 className="text-lg font-bold text-slate-900">Inspection Timeline</h3>
+                <Calendar className="w-5 h-5 text-industrial-500" />
+                <h3 className="text-lg font-bold text-slate-900">Inspection Volume Trend</h3>
               </div>
-              {timeline.length > 1 ? (
+              {analytics.timeline.length > 0 ? (
                 <div className="h-[320px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                      data={timeline}
+                      data={analytics.timeline}
                       margin={{ top: 10, right: 10, left: -15, bottom: 10 }}
                     >
                       <defs>
-                        <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                         </linearGradient>
-                        <linearGradient id="gradDefects" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                        <linearGradient id="colorDefects" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#dc2626" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#dc2626" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
                       <YAxis tick={{ fill: '#64748b', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip content={<CustomTooltip />} />
-                      <Legend
-                        iconType="circle"
-                        iconSize={10}
-                        formatter={(value: string) => (
-                          <span className="text-sm font-semibold text-slate-600 ml-1">{value}</span>
-                        )}
-                      />
+                      <Legend iconType="circle" iconSize={8} />
                       <Area
                         type="monotone"
                         dataKey="total"
                         name="Total"
-                        stroke="#3b82f6"
-                        fill="url(#gradTotal)"
+                        stroke="#2563eb"
                         strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorTotal)"
                       />
                       <Area
                         type="monotone"
                         dataKey="defects"
                         name="Defects"
-                        stroke="#ef4444"
-                        fill="url(#gradDefects)"
+                        stroke="#dc2626"
                         strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorDefects)"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[320px] flex flex-col items-center justify-center text-slate-400">
-                  <TrendingUp className="w-10 h-10 mb-3 opacity-40" />
-                  <p className="text-sm">Need more data points to show timeline</p>
-                  <p className="text-xs text-slate-300 mt-1">At least 2 days of inspections required</p>
+                <div className="h-[320px] flex items-center justify-center text-slate-400">
+                  No timeline data available for this range
                 </div>
               )}
             </div>
