@@ -15,7 +15,13 @@ import {
   Search,
   FileImage,
   Video,
+  Download,
+  FileText,
+  Edit3,
+  CheckCircle2,
+  Save,
 } from 'lucide-react';
+import type { InspectionRecord } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -38,20 +44,38 @@ export default function History() {
   const [pageSize, setPageSize] = useState(20);
   const [filterClass, setFilterClass] = useState('');
   const [filterSource, setFilterSource] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'' | 'defect' | 'clean'>('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Delete confirmation state
+  // Delete & Note modal state
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [editingRecord, setEditingRecord] = useState<InspectionRecord | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [isExporting, setIsExporting] = useState<'csv' | 'json' | null>(null);
 
   const skip = page * pageSize;
 
+  const isDefectParam =
+    filterStatus === 'defect' ? true : filterStatus === 'clean' ? false : undefined;
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['inspection-history', skip, pageSize, filterClass, filterSource],
+    queryKey: [
+      'inspection-history',
+      skip,
+      pageSize,
+      filterClass,
+      filterSource,
+      filterStatus,
+      searchQuery,
+    ],
     queryFn: () =>
       inspectionService.getHistory(
         skip,
         pageSize,
         filterClass || undefined,
         filterSource || undefined,
+        isDefectParam,
+        searchQuery || undefined,
       ),
     placeholderData: (prev) => prev,
   });
@@ -65,15 +89,47 @@ export default function History() {
     },
   });
 
+  const updateNotesMutation = useMutation({
+    mutationFn: ({ id, notes }: { id: number; notes: string }) =>
+      inspectionService.updateNotes(id, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inspection-history'] });
+      setEditingRecord(null);
+    },
+  });
+
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
   const clearFilters = () => {
     setFilterClass('');
     setFilterSource('');
+    setFilterStatus('');
+    setSearchQuery('');
     setPage(0);
   };
 
-  const hasFilters = filterClass || filterSource;
+  const hasFilters = filterClass || filterSource || filterStatus || searchQuery;
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    setIsExporting(format);
+    try {
+      await inspectionService.exportInspections(format, {
+        defectClass: filterClass || undefined,
+        source: filterSource || undefined,
+        isDefect: isDefectParam,
+        search: searchQuery || undefined,
+      });
+    } catch (err) {
+      console.error('Export failed', err);
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
+  const openNoteEditor = (record: InspectionRecord) => {
+    setEditingRecord(record);
+    setNoteText(record.notes || '');
+  };
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 0.9) return 'bg-red-500';
@@ -92,22 +148,67 @@ export default function History() {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <HistoryIcon className="w-6 h-6 text-industrial-500" />
-          Inspection History
-        </h1>
-        <p className="text-slate-500 mt-1">
-          Comprehensive log of all past quality inspections with filtering and management.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <HistoryIcon className="w-6 h-6 text-industrial-500" />
+            Inspection History
+          </h1>
+          <p className="text-slate-500 mt-1">
+            Comprehensive audit log of all surface inspections with notes and report export.
+          </p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => handleExport('csv')}
+            disabled={isExporting !== null}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
+            title="Download CSV report"
+          >
+            {isExporting === 'csv' ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            Export CSV
+          </button>
+          <button
+            onClick={() => handleExport('json')}
+            disabled={isExporting !== null}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
+            title="Download JSON report"
+          >
+            {isExporting === 'json' ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            Export JSON
+          </button>
+        </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-slate-500">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(0);
+              }}
+              placeholder="Search defect type or remarks..."
+              className="w-full text-sm pl-9 pr-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-industrial-500/30 focus:border-industrial-500 transition-colors"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 text-slate-500 hidden sm:flex">
             <Filter className="w-4 h-4" />
-            <span className="text-sm font-semibold">Filters</span>
+            <span className="text-sm font-semibold">Filter</span>
           </div>
 
           <div className="w-px h-6 bg-slate-200 hidden sm:block" />
@@ -127,6 +228,20 @@ export default function History() {
                 {cls.replace('_', ' ')}
               </option>
             ))}
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={filterStatus}
+            onChange={(e) => {
+              setFilterStatus(e.target.value as any);
+              setPage(0);
+            }}
+            className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-industrial-500/30 focus:border-industrial-500 transition-colors"
+          >
+            <option value="">All Statuses</option>
+            <option value="defect">Defective Only</option>
+            <option value="clean">Clean Only</option>
           </select>
 
           {/* Source Filter */}
@@ -218,6 +333,7 @@ export default function History() {
                       <th className="px-6 py-3.5">Confidence</th>
                       <th className="px-6 py-3.5">Status</th>
                       <th className="px-6 py-3.5">Source</th>
+                      <th className="px-6 py-3.5">Remarks</th>
                       <th className="px-6 py-3.5">Date & Time</th>
                       <th className="px-6 py-3.5 text-right">Actions</th>
                     </tr>
@@ -243,11 +359,12 @@ export default function History() {
                                   : `${API_BASE_URL}/uploads/${record.original_image_path}`
                               }
                               alt={record.defect_class}
-                              className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-slate-100 shadow-sm"
+                              className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-slate-100 shadow-sm cursor-pointer hover:scale-105 transition-transform"
                               loading="lazy"
+                              onClick={() => openNoteEditor(record)}
+                              title="Click to view details and remarks"
                             />
                           ) : (
-
                             <div className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center">
                               <Activity className="w-4 h-4 text-slate-400" />
                             </div>
@@ -305,6 +422,17 @@ export default function History() {
                           </span>
                         </td>
 
+                        {/* Notes / Remarks */}
+                        <td className="px-6 py-3 text-xs text-slate-600 max-w-[180px] truncate">
+                          {record.notes ? (
+                            <span className="text-slate-800" title={record.notes}>
+                              {record.notes}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic">No remarks</span>
+                          )}
+                        </td>
+
                         {/* Date */}
                         <td className="px-6 py-3 text-slate-500 text-xs">
                           <div>
@@ -325,13 +453,22 @@ export default function History() {
 
                         {/* Actions */}
                         <td className="px-6 py-3 text-right">
-                          <button
-                            onClick={() => setDeleteTarget(record.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                            title="Delete inspection"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => openNoteEditor(record)}
+                              className="p-1.5 text-slate-400 hover:text-industrial-600 hover:bg-industrial-50 rounded-lg transition-colors"
+                              title="Edit remarks"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(record.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                              title="Delete inspection"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -364,22 +501,15 @@ export default function History() {
 
                   <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                      // Show pages around current page
-                      let pageNum: number;
-                      if (totalPages <= 5) {
-                        pageNum = i;
-                      } else if (page < 3) {
-                        pageNum = i;
-                      } else if (page > totalPages - 4) {
-                        pageNum = totalPages - 5 + i;
-                      } else {
-                        pageNum = page - 2 + i;
+                      let pageNum = i;
+                      if (totalPages > 5 && page > 2) {
+                        pageNum = Math.min(page - 2 + i, totalPages - 1);
                       }
                       return (
                         <button
                           key={pageNum}
                           onClick={() => setPage(pageNum)}
-                          className={`w-8 h-8 flex items-center justify-center text-sm font-medium rounded-lg transition-colors ${
+                          className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                             page === pageNum
                               ? 'bg-industrial-600 text-white shadow-sm'
                               : 'text-slate-600 hover:bg-slate-100'
@@ -437,6 +567,114 @@ export default function History() {
             </div>
           )}
         </>
+      )}
+
+      {/* Note Editor Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-industrial-600" />
+                <h3 className="text-lg font-bold text-slate-900">
+                  Inspection #{editingRecord.id} Remarks
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingRecord(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg text-xs">
+              <div>
+                <span className="text-slate-400 block">Defect Class</span>
+                <span className="font-semibold text-slate-800 capitalize">
+                  {editingRecord.defect_class.replace('_', ' ')}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Confidence</span>
+                <span className="font-semibold text-slate-800">
+                  {(editingRecord.confidence * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Images preview if present */}
+            {editingRecord.original_image_path && (
+              <div className="flex gap-3 justify-center py-2">
+                <div className="text-center">
+                  <p className="text-[11px] font-semibold text-slate-500 mb-1">Original</p>
+                  <img
+                    src={
+                      editingRecord.original_image_path.startsWith('http')
+                        ? editingRecord.original_image_path
+                        : `${API_BASE_URL}/uploads/${editingRecord.original_image_path}`
+                    }
+                    alt="Original"
+                    className="w-28 h-28 object-cover rounded-lg border border-slate-200"
+                  />
+                </div>
+                {editingRecord.gradcam_image_path && (
+                  <div className="text-center">
+                    <p className="text-[11px] font-semibold text-slate-500 mb-1">Grad-CAM</p>
+                    <img
+                      src={
+                        editingRecord.gradcam_image_path.startsWith('http')
+                          ? editingRecord.gradcam_image_path
+                          : `${API_BASE_URL}/uploads/${editingRecord.gradcam_image_path}`
+                      }
+                      alt="Grad-CAM"
+                      className="w-28 h-28 object-cover rounded-lg border border-slate-200"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Operator Remarks / Batch Info
+              </label>
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                rows={3}
+                placeholder="Add audit notes, coil identifiers, or shift inspection remarks..."
+                className="w-full text-sm border border-slate-200 rounded-lg p-3 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-industrial-500/30 focus:border-industrial-500 transition-colors"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setEditingRecord(null)}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  updateNotesMutation.mutate({
+                    id: editingRecord.id,
+                    notes: noteText.trim(),
+                  })
+                }
+                disabled={updateNotesMutation.isPending}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-industrial-600 hover:bg-industrial-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {updateNotesMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Save Remarks
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}

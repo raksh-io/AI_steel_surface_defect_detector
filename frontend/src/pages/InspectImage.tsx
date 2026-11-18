@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, Image as ImageIcon, Loader2, RefreshCw, AlertTriangle, Info } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { UploadCloud, Image as ImageIcon, Loader2, RefreshCw, AlertTriangle, Info, FileText, CheckCircle2, History, ArrowRight } from 'lucide-react';
 import { inspectionService } from '../services/inspection';
 import type { PredictionResult } from '../types';
 
@@ -11,6 +12,9 @@ export default function InspectImage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,7 +78,23 @@ export default function InspectImage() {
     setPreviewUrl(null);
     setResult(null);
     setError(null);
+    setNoteText('');
+    setNoteSaved(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSaveNote = async () => {
+    if (!result?.inspection_id || !noteText.trim()) return;
+    setIsSavingNote(true);
+    try {
+      await inspectionService.updateNotes(result.inspection_id, noteText.trim());
+      setNoteSaved(true);
+      setTimeout(() => setNoteSaved(false), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to save note');
+    } finally {
+      setIsSavingNote(false);
+    }
   };
 
   return (
@@ -230,6 +250,48 @@ export default function InspectImage() {
                   className="max-w-full h-auto max-h-[400px] object-contain rounded shadow-sm border border-slate-700"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Notes and Audit Trail Card */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-industrial-500" />
+                Operator Inspection Remarks
+              </h3>
+              <Link
+                to="/history"
+                className="text-sm text-industrial-600 hover:text-industrial-700 font-semibold flex items-center gap-1.5"
+              >
+                <History className="w-4 h-4" />
+                View in History
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Add batch info, heat number, or operator notes (e.g., Coil #402 line 2)..."
+                className="flex-1 text-sm border border-slate-200 rounded-lg px-3.5 py-2.5 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-industrial-500/30 focus:border-industrial-500 transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveNote();
+                }}
+              />
+              <button
+                onClick={handleSaveNote}
+                disabled={isSavingNote || !noteText.trim()}
+                className="px-5 py-2.5 bg-industrial-600 hover:bg-industrial-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shrink-0"
+              >
+                {isSavingNote ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : noteSaved ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-300" />
+                ) : null}
+                {noteSaved ? 'Note Saved' : 'Save Remark'}
+              </button>
             </div>
           </div>
         </div>
