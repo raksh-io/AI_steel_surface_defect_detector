@@ -80,6 +80,10 @@ class InspectionListResponse(BaseModel):
     items: List[InspectionOut]
 
 
+class InspectionUpdateNotes(BaseModel):
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
 # ─────────────────────────────────────────
 # Inference / Prediction Schemas
 # ─────────────────────────────────────────

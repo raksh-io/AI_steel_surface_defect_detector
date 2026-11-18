@@ -108,3 +108,69 @@ def test_history_and_delete(mock_infer, client, auth_headers, sample_image_bytes
     # Verify deleted
     res_single_after = client.get(f"/api/inspect/history/{insp_id}", headers=auth_headers)
     assert res_single_after.status_code == 404
+
+
+@patch("app.routers.inspections.run_inference")
+def test_update_inspection_notes(mock_infer, client, auth_headers, sample_image_bytes):
+    mock_infer.return_value = {
+        "class_name": "Inclusion",
+        "class_index": 1,
+        "confidence": 0.95,
+        "gradcam_base64": base64.b64encode(b"fake_gradcam").decode("utf-8"),
+        "original_base64": base64.b64encode(b"fake_original").decode("utf-8"),
+    }
+    res_upload = client.post(
+        "/api/inspect/upload",
+        files={"file": ("inclusion.jpg", sample_image_bytes, "image/jpeg")},
+        headers=auth_headers,
+    )
+    insp_id = res_upload.json()["inspection_id"]
+
+    res_patch = client.patch(
+        f"/api/inspect/history/{insp_id}/notes",
+        json={"notes": "Found on coil #124 during morning shift"},
+        headers=auth_headers,
+    )
+    assert res_patch.status_code == 200
+    assert res_patch.json()["notes"] == "Found on coil #124 during morning shift"
+
+    # Search for notes
+    res_search = client.get(
+        "/api/inspect/history",
+        params={"search": "coil #124"},
+        headers=auth_headers,
+    )
+    assert res_search.status_code == 200
+    assert res_search.json()["total"] >= 1
+
+
+@patch("app.routers.inspections.run_inference")
+def test_export_inspections_csv_and_json(mock_infer, client, auth_headers, sample_image_bytes):
+    mock_infer.return_value = {
+        "class_name": "Crazing",
+        "class_index": 0,
+        "confidence": 0.99,
+        "gradcam_base64": base64.b64encode(b"fake_gradcam").decode("utf-8"),
+        "original_base64": base64.b64encode(b"fake_original").decode("utf-8"),
+    }
+    client.post(
+        "/api/inspect/upload",
+        files={"file": ("crazing.jpg", sample_image_bytes, "image/jpeg")},
+        headers=auth_headers,
+    )
+
+    # Export CSV
+    res_csv = client.get("/api/inspect/export?format=csv", headers=auth_headers)
+    assert res_csv.status_code == 200
+    assert "text/csv" in res_csv.headers["content-type"]
+    assert "Inspection ID" in res_csv.text
+
+    # Export JSON
+    res_json = client.get("/api/inspect/export?format=json", headers=auth_headers)
+    assert res_json.status_code == 200
+    assert "application/json" in res_json.headers["content-type"]
+    data = res_json.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert "defect_class" in data[0]
+
