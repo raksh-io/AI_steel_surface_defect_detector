@@ -56,11 +56,15 @@ def encode_multipart_formdata(fields, files):
     return b'\r\n'.join(body), f'multipart/form-data; boundary={boundary.decode("utf-8")}'
 
 def test_all():
+    import pytest
     print("=== Testing API endpoints ===")
     
     # 1. Health check
     print("Testing /health...")
-    res, code = request_json(f"{API_URL}/health")
+    try:
+        res, code = request_json(f"{API_URL}/health")
+    except Exception as exc:
+        pytest.skip(f"Live server not running at {API_URL} ({exc}). Skipping E2E test.")
     assert code == 200, f"Health check failed with {code}: {res}"
     print("Health check OK:", res)
     

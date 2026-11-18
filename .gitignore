@@ -33,6 +33,7 @@ outputs/
 *.onnx
 
 # Backend uploads & database
+uploads/
 backend/uploads/
 backend/app/uploads/
 *.db
